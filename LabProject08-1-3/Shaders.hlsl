@@ -1,11 +1,4 @@
-struct MATERIAL
-{
-	float4					m_cAmbient;
-	float4					m_cDiffuse;
-	float4					m_cSpecular; //a = power
-	float4					m_cEmissive;
-};
-
+#include "Light.hlsl"
 cbuffer cbCameraInfo : register(b1)
 {
 	matrix					gmtxView : packoffset(c0);
@@ -20,7 +13,7 @@ cbuffer cbGameObjectInfo : register(b2)
 	uint					gnTexturesMask : packoffset(c8);
 };
 
-#include "Light.hlsl"
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -99,7 +92,7 @@ float4 PSStandard(VS_STANDARD_OUTPUT input) : SV_TARGET
 		float3x3 TBN = float3x3(normalize(input.tangentW), normalize(input.bitangentW), normalize(input.normalW));
 		float3 vNormal = normalize(cNormalColor.rgb * 2.0f - 1.0f); //[0, 1] ¡æ [-1, 1]
 		normalW = normalize(mul(vNormal, TBN));
-		cIllumination = Lighting(input.positionW, normalW);
+        cIllumination = Lighting(input.positionW, normalW, gvCameraPosition, gMaterial);
 		cColor = lerp(cColor, cIllumination, 0.5f);
 	}
 

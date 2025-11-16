@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include "Scene.h"
+#include "GameFramework.h"
 
 CDescriptorHeap* CScene::m_pDescriptorHeap = NULL;
 
@@ -130,9 +131,6 @@ void CScene::CreateShaderResourceView(ID3D12Device* pd3dDevice, CTexture* pTextu
 	}
 }
 
-CScene::CScene()
-{
-}
 
 CScene::~CScene()
 {
@@ -208,12 +206,18 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 	m_nShaders = 1;
 	m_ppShaders = new CShader*[m_nShaders];
 
+	CAirplanePlayer* pAirplanePlayer = new CAirplanePlayer(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pAirplanePlayer->SetPosition(XMFLOAT3(920.0f, 745.0f, 1270.0));
+	m_pPlayer = pAirplanePlayer;
+
 	pObjectsShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	pObjectsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, NULL);
 
 	m_ppShaders[0] = pObjectsShader;
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+
+	GetCursorPos(&m_ptOldCursorPos);
 }
 
 void CScene::ReleaseObjects()
@@ -464,12 +468,13 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
-		case 'W': m_ppGameObjects[0]->MoveForward(+1.0f); break;
-		case 'S': m_ppGameObjects[0]->MoveForward(-1.0f); break;
-		case 'A': m_ppGameObjects[0]->MoveStrafe(-1.0f); break;
-		case 'D': m_ppGameObjects[0]->MoveStrafe(+1.0f); break;
-		case 'Q': m_ppGameObjects[0]->MoveUp(+1.0f); break;
-		case 'R': m_ppGameObjects[0]->MoveUp(-1.0f); break;
+		case 'M': 
+			mouse_c = !mouse_c; 
+			if (mouse_c) {
+				SetCursor(NULL);
+				GetCursorPos(&m_ptOldCursorPos);
+			}
+			break;
 		default:
 			break;
 		}
@@ -477,11 +482,45 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 	default:
 		break;
 	}
+
 	return(false);
 }
 
 bool CScene::ProcessInput(UCHAR *pKeysBuffer)
 {
+	DWORD dwDirection = 0;
+	POINT ptCursorPos;
+	float cxDelta = 0.0f, cyDelta = 0.0f;
+	if (mouse_c)
+	{
+		SetCursor(NULL);
+		GetCursorPos(&ptCursorPos);
+		cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x) / 3.0f;
+		cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y) / 3.0f;
+		SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
+	}
+
+	if (pKeysBuffer['W'] & 0xF0) dwDirection |= DIR_FORWARD;
+	if (pKeysBuffer['S'] & 0xF0) dwDirection |= DIR_BACKWARD;
+	if (pKeysBuffer['A'] & 0xF0) dwDirection |= DIR_LEFT;
+	if (pKeysBuffer['D'] & 0xF0) dwDirection |= DIR_RIGHT;
+	if (pKeysBuffer[VK_LSHIFT] & 0xF0) dwDirection |= DIR_UP;
+	if (pKeysBuffer[VK_LCONTROL] & 0xF0) dwDirection |= DIR_DOWN;
+	if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
+	{
+		if (cxDelta || cyDelta)
+		{
+			if (pKeysBuffer[VK_RBUTTON] & 0xF0)
+				m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
+			else
+				m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
+		}
+		if (dwDirection) m_pPlayer->Move(dwDirection, 1.25f, true);
+
+
+	}
+	m_pPlayer->Update(framework->m_GameTimer.GetTimeElapsed());
+	
 	return(false);
 }
 
@@ -519,3 +558,77 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
 }
 
+bool MenuScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
+{
+	return false;
+}
+
+bool MenuScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
+{
+	switch (nMessageID)
+	{
+	case WM_KEYDOWN:
+		switch (wParam)
+		{
+		case 'I':
+			framework->next_scene = new CScene(framework);
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return(false);
+}
+
+void MenuScene::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+}
+
+void MenuScene::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)
+{
+}
+
+void MenuScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
+
+	m_pDescriptorHeap = new CDescriptorHeap();
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1); //SuperCobra(17), Gunship(2), Player(1), Skybox(1), Terrain(3)
+
+	BuildDefaultLightsAndMaterials();
+
+
+	CAirplanePlayer* pAirplanePlayer = new CAirplanePlayer(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pAirplanePlayer->GetCamera()->SetMode(FIRST_PERSON_CAMERA);
+	m_pPlayer = pAirplanePlayer;
+}
+
+bool MenuScene::ProcessInput(UCHAR* pKeysBuffer)
+{
+	return false;
+}
+
+void MenuScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+{
+	if (m_pd3dGraphicsRootSignature) pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+	pd3dCommandList->SetDescriptorHeaps(1, &m_pDescriptorHeap->m_pd3dCbvSrvDescriptorHeap);
+
+	pCamera->SetViewportsAndScissorRects(pd3dCommandList);
+	pCamera->UpdateShaderVariables(pd3dCommandList);
+
+	UpdateShaderVariables(pd3dCommandList);
+
+	//D3D12_GPU_VIRTUAL_ADDRESS d3dcbLightsGpuVirtualAddress = m_pd3dcbLights->GetGPUVirtualAddress();
+	//pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); //Lights
+
+	if (m_pSkyBox) m_pSkyBox->Render(pd3dCommandList, pCamera);
+	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
+
+	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
+
+}

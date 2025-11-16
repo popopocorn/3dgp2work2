@@ -30,8 +30,6 @@ CGameFramework::CGameFramework()
 
 	m_nWndClientWidth = FRAME_BUFFER_WIDTH;
 	m_nWndClientHeight = FRAME_BUFFER_HEIGHT;
-
-	m_pScene = NULL;
 	m_pPlayer = NULL;
 
 	_tcscpy_s(m_pszFrameRate, _T("LabProject ("));
@@ -286,7 +284,7 @@ void CGameFramework::ChangeSwapChainState()
 
 void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	if (m_pScene) m_pScene->OnProcessingMouseMessage(hWnd, nMessageID, wParam, lParam);
+	if (m_pScene.back()) m_pScene.back()->OnProcessingMouseMessage(hWnd, nMessageID, wParam, lParam);
 	switch (nMessageID)
 	{
 		case WM_LBUTTONDOWN:
@@ -307,7 +305,7 @@ void CGameFramework::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM
 
 void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	if (m_pScene) m_pScene->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
+	if (m_pScene.back()) m_pScene.back()->OnProcessingKeyboardMessage(hWnd, nMessageID, wParam, lParam);
 	switch (nMessageID)
 	{
 		case WM_KEYUP:
@@ -404,12 +402,12 @@ void CGameFramework::BuildObjects()
 
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
-	m_pScene = new CScene();
-	if (m_pScene) m_pScene->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+	//m_pScene.push_back(new CScene(this));
+	m_pScene.push_back(new MenuScene(this));
+	if (m_pScene.back()) m_pScene.back()->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 
-	CAirplanePlayer *pAirplanePlayer = new CAirplanePlayer(m_pd3dDevice, m_pd3dCommandList, m_pScene->GetGraphicsRootSignature());
-	pAirplanePlayer->SetPosition(XMFLOAT3(920.0f, 745.0f, 1270.0));
-	m_pScene->m_pPlayer = m_pPlayer = pAirplanePlayer;
+	
+	m_pPlayer = m_pScene.back()->m_pPlayer;
 	m_pCamera = m_pPlayer->GetCamera();
 
 	m_pd3dCommandList->Close();
@@ -418,7 +416,7 @@ void CGameFramework::BuildObjects()
 
 	WaitForGpuComplete();
 
-	if (m_pScene) m_pScene->ReleaseUploadBuffers();
+	if (m_pScene.back()) m_pScene.back()->ReleaseUploadBuffers();
 	if (m_pPlayer) m_pPlayer->ReleaseUploadBuffers();
 
 	m_GameTimer.Reset();
@@ -428,47 +426,17 @@ void CGameFramework::ReleaseObjects()
 {
 	if (m_pPlayer) m_pPlayer->Release();
 
-	if (m_pScene) m_pScene->ReleaseObjects();
-	if (m_pScene) delete m_pScene;
+	if (m_pScene.back()) m_pScene.back()->ReleaseObjects();
 }
 
 void CGameFramework::ProcessInput()
 {
 	static UCHAR pKeysBuffer[256];
-	bool bProcessedByScene = false;
-	if (GetKeyboardState(pKeysBuffer) && m_pScene) bProcessedByScene = m_pScene->ProcessInput(pKeysBuffer);
+	bool bProcessedByScene = true;
+	if (GetKeyboardState(pKeysBuffer) && m_pScene.back()) bProcessedByScene = m_pScene.back()->ProcessInput(pKeysBuffer);
 	if (!bProcessedByScene)
 	{
-		DWORD dwDirection = 0;
-		if (pKeysBuffer[VK_UP] & 0xF0) dwDirection |= DIR_FORWARD;
-		if (pKeysBuffer[VK_DOWN] & 0xF0) dwDirection |= DIR_BACKWARD;
-		if (pKeysBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;
-		if (pKeysBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT;
-		if (pKeysBuffer[VK_PRIOR] & 0xF0) dwDirection |= DIR_UP;
-		if (pKeysBuffer[VK_NEXT] & 0xF0) dwDirection |= DIR_DOWN;
-
-		float cxDelta = 0.0f, cyDelta = 0.0f;
-		POINT ptCursorPos;
-		if (GetCapture() == m_hWnd)
-		{
-			SetCursor(NULL);
-			GetCursorPos(&ptCursorPos);
-			cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x) / 3.0f;
-			cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y) / 3.0f;
-			SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
-		}
-
-		if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
-		{
-			if (cxDelta || cyDelta)
-			{
-				if (pKeysBuffer[VK_RBUTTON] & 0xF0)
-					m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
-				else
-					m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
-			}
-			if (dwDirection) m_pPlayer->Move(dwDirection, 1.25f, true);
-		}
+		
 	}
 	m_pPlayer->Update(m_GameTimer.GetTimeElapsed());
 }
@@ -477,7 +445,7 @@ void CGameFramework::AnimateObjects()
 {
 	float fTimeElapsed = m_GameTimer.GetTimeElapsed();
 
-	if (m_pScene) m_pScene->AnimateObjects(fTimeElapsed);
+	if (m_pScene.back()) m_pScene.back()->AnimateObjects(fTimeElapsed);
 
 	m_pPlayer->Animate(fTimeElapsed, NULL);
 }
@@ -543,7 +511,7 @@ void CGameFramework::FrameAdvance()
 
 	m_pd3dCommandList->OMSetRenderTargets(1, &d3dRtvCPUDescriptorHandle, TRUE, &d3dDsvCPUDescriptorHandle);
 
-	if (m_pScene) m_pScene->Render(m_pd3dCommandList, m_pCamera);
+	if (m_pScene.back()) m_pScene.back()->Render(m_pd3dCommandList, m_pCamera);
 
 #ifdef _WITH_PLAYER_TOP
 	m_pd3dCommandList->ClearDepthStencilView(d3dDsvCPUDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, NULL);
@@ -585,5 +553,29 @@ void CGameFramework::FrameAdvance()
 	XMFLOAT3 xmf3Position = m_pPlayer->GetPosition();
 	_stprintf_s(m_pszFrameRate + nLength, 70 - nLength, _T("(%4f, %4f, %4f)"), xmf3Position.x, xmf3Position.y, xmf3Position.z);
 	::SetWindowText(m_hWnd, m_pszFrameRate);
+
+	if (next_scene) {
+		ReleaseObjects();
+
+		m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
+		m_pScene.push_back(next_scene);
+		if (m_pScene.back()) m_pScene.back()->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
+
+
+		m_pPlayer = m_pScene.back()->m_pPlayer;
+		m_pCamera = m_pPlayer->GetCamera();
+
+		m_pd3dCommandList->Close();
+		ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
+		m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
+
+		WaitForGpuComplete();
+
+		if (m_pScene.back()) m_pScene.back()->ReleaseUploadBuffers();
+		if (m_pPlayer) m_pPlayer->ReleaseUploadBuffers();
+
+		m_GameTimer.Reset();
+		next_scene = NULL;
+	}
 }
 

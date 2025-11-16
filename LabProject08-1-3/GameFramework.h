@@ -1,7 +1,6 @@
 #pragma once
 
-#define FRAME_BUFFER_WIDTH		640
-#define FRAME_BUFFER_HEIGHT		480
+
 
 #include "Timer.h"
 #include "Player.h"
@@ -41,6 +40,10 @@ public:
 	void OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	LRESULT CALLBACK OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 
+
+	CGameTimer					m_GameTimer;
+	std::vector<CScene*>		m_pScene;
+	CScene*						next_scene = NULL;
 private:
 	HINSTANCE					m_hInstance;
 	HWND						m_hWnd; 
@@ -76,13 +79,12 @@ private:
 	ID3D12Debug					*m_pd3dDebugController;
 #endif
 
-	CGameTimer					m_GameTimer;
-
-	CScene						*m_pScene = NULL;
+	
+	
 	CPlayer						*m_pPlayer = NULL;
 	CCamera						*m_pCamera = NULL;
 
-	POINT						m_ptOldCursorPos;
+	POINT						m_ptOldCursorPos = {1500, 150};
 
 	_TCHAR						m_pszFrameRate[70];
 };
