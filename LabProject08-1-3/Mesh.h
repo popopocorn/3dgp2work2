@@ -66,7 +66,8 @@ protected:
 
 public:
 	UINT GetType() { return(m_nType); }
-
+	XMFLOAT3* GetVertices() { return m_pxmf3Positions; }
+	int GetVerNum() { return m_nVertices; }
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet);
 };

@@ -479,6 +479,13 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 			break;
 		}
 		break;
+	case WM_KEYUP:
+		switch (wParam)
+		{
+		case VK_ESCAPE:
+			::PostQuitMessage(0);
+			break;
+		}
 	default:
 		break;
 	}
@@ -560,7 +567,40 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 
 bool MenuScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
-	return false;
+	POINT curPos;
+	switch (nMessageID)
+	{
+	case WM_LBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+		::SetCapture(hWnd);
+		::GetCursorPos(&curPos);
+		ScreenToClient(hWnd, &curPos);
+		for (int i = 0; i < ((UIShader*)m_ppShaders[0])->m_nObjects; ++i) {
+			if (((UIObject*)((UIShader*)m_ppShaders[0])->m_ppObjects[i])->checkClick(curPos)){
+				char t = ((UIObject*)((UIShader*)m_ppShaders[0])->m_ppObjects[i])->GetType();
+				switch (t) {
+				case 's':
+					framework->next_scene = new CScene(framework);
+					break;
+				case 'q':
+					PostQuitMessage(0);
+					break;
+				}
+				break;
+			}
+
+		}
+		break;
+	case WM_LBUTTONUP:
+	case WM_RBUTTONUP:
+		::ReleaseCapture();
+		break;
+	case WM_MOUSEMOVE:
+		break;
+	default:
+		break;
+	}
+	return true;
 }
 
 bool MenuScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
@@ -570,9 +610,6 @@ bool MenuScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM w
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
-		case 'I':
-			framework->next_scene = new CScene(framework);
-			break;
 		default:
 			break;
 		}
@@ -594,17 +631,57 @@ void MenuScene::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList
 
 void MenuScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
+
+
+	UIShader* pObjectsShader = new UIShader();
+	int nObjects = pObjectsShader->GetNumberOfObjects();
+
+	m_nShaders = 1;
+	m_ppShaders = new CShader * [m_nShaders];
+
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
 	m_pDescriptorHeap = new CDescriptorHeap();
-	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 1); //SuperCobra(17), Gunship(2), Player(1), Skybox(1), Terrain(3)
+	CreateCbvSrvDescriptorHeaps(pd3dDevice, 0, 2);
 
 	BuildDefaultLightsAndMaterials();
+
+
 
 
 	CAirplanePlayer* pAirplanePlayer = new CAirplanePlayer(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	pAirplanePlayer->GetCamera()->SetMode(FIRST_PERSON_CAMERA);
 	m_pPlayer = pAirplanePlayer;
+
+
+
+	pObjectsShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pObjectsShader->m_nObjects = 2;
+	pObjectsShader->m_ppObjects = new CGameObject * [pObjectsShader->m_nObjects];
+
+	CGameObject* start_button = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/start_button.bin", pObjectsShader);
+	start_button->SetPosition(0, 0.5, 0.);
+	//Gunship start_button
+
+	pObjectsShader->m_ppObjects[0] = new UIObject(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pObjectsShader->m_ppObjects[0]->SetChild(start_button);
+	((UIObject*)pObjectsShader->m_ppObjects[0])->setBox();
+	((UIObject*)pObjectsShader->m_ppObjects[0])->setType('s');
+	start_button->AddRef();
+
+	CGameObject* quit_button = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/quit_button.bin", pObjectsShader);
+	quit_button->SetPosition(0, -0.5, 0.);
+	//Gunship start_button
+
+	pObjectsShader->m_ppObjects[1] = new UIObject(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pObjectsShader->m_ppObjects[1]->SetChild(quit_button);
+	((UIObject*)pObjectsShader->m_ppObjects[1])->setBox();
+	((UIObject*)pObjectsShader->m_ppObjects[1])->setType('q');
+	start_button->AddRef();
+
+	m_ppShaders[0] = pObjectsShader;
+
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 bool MenuScene::ProcessInput(UCHAR* pKeysBuffer)

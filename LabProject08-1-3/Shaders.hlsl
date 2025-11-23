@@ -230,3 +230,30 @@ float4 PSTerrain(VS_TERRAIN_OUTPUT input) : SV_TARGET
 
 	return(cColor);
 }
+
+
+/////////////////////////////////////////////////////////////
+VS_STANDARD_OUTPUT VSUI(VS_STANDARD_INPUT input)
+{
+    VS_STANDARD_OUTPUT output;
+
+    output.positionW = (float3) mul(float4(input.position, 1.0f), gmtxGameObject);
+	
+    output.position = float4(output.positionW, 1.0f);
+    output.uv = input.uv;
+
+    return (output);
+}
+
+float4 PSUI(VS_STANDARD_OUTPUT input) : SV_TARGET
+{
+    float4 cAlbedoColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
+
+
+    if (gnTexturesMask & MATERIAL_ALBEDO_MAP)
+        cAlbedoColor = gtxtAlbedoTexture.Sample(gssWrap, input.uv);
+
+    float4 cColor = cAlbedoColor;
+
+    return (cColor);
+}

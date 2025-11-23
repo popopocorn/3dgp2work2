@@ -108,10 +108,10 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState=0);
 
 	int GetNumberOfObjects() { return(m_nObjects); }
-
-protected:
-	CGameObject						**m_ppObjects = 0;
+	CGameObject**					m_ppObjects = 0;
 	int								m_nObjects = 0;
+protected:
+
 
 	float							m_fxPitch = 0;
 	float							m_fyPitch = 0;
@@ -152,9 +152,13 @@ public:
 	virtual void CreateShader(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature);
 };
 
-class UIShader : CObjectsShader {
+class UIShader : public CObjectsShader {
+public:
 	UIShader() {};
 	~UIShader() {};
-
+	int GetNumberOfObjects() { return(m_nObjects); }
 	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext = NULL);
+	virtual D3D12_SHADER_BYTECODE CreateVertexShader();
+	virtual D3D12_SHADER_BYTECODE CreatePixelShader();
+	void ReleaseUploadBuffers() {};
 };

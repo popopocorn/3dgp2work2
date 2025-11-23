@@ -54,6 +54,7 @@ private:
 
 	int								m_nSamplers = 0;
 	D3D12_GPU_DESCRIPTOR_HANDLE*	m_pd3dSamplerGpuDescriptorHandles = NULL;
+	
 
 public:
 	void AddRef() { m_nReferences++; }
@@ -125,7 +126,7 @@ public:
 	XMFLOAT4						m_xmf4EmissiveColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	XMFLOAT4						m_xmf4SpecularColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	XMFLOAT4						m_xmf4AmbientColor = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-
+	
 	void SetShader(CShader *pShader);
 	void SetMaterialType(UINT nType) { m_nType |= nType; }
 	void SetTexture(CTexture* pTexture);
@@ -176,6 +177,7 @@ public:
 	CGameObject 					*m_pParent = NULL;
 	CGameObject 					*m_pChild = NULL;
 	CGameObject 					*m_pSibling = NULL;
+	BoundingOrientedBox				m_xmOOBB;
 
 	virtual void SetMesh(int nIndex, CMesh* pMesh);
 	void SetShader(int nMaterial, CShader *pShader);
@@ -320,6 +322,18 @@ public:
 	float GetLength() { return(m_nLength * m_xmf3Scale.z); }
 };
 
-class UIObject : CGameObject {
-
+class UIObject : public CGameObject {
+public:
+	UIObject(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature) {};
+	~UIObject() {};
+	bool checkClick(POINT cur);
+	char GetType();
+	void setBox();
+	void setType(char t) { type = t; }
+private:
+	char type{'s'};
+	float minX;
+	float maxX;
+	float minY;
+	float maxY;
 };

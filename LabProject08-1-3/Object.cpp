@@ -1015,3 +1015,56 @@ CHeightMapTerrain::~CHeightMapTerrain(void)
 	if (m_pHeightMapImage) delete m_pHeightMapImage;
 }
 
+bool UIObject::checkClick(POINT cur)
+{
+
+	float x = ((float)cur.x / FRAME_BUFFER_WIDTH) * 2.0f - 1.0f;
+	float y = 1.0f - ((float)cur.y / FRAME_BUFFER_HEIGHT) * 2.0f;
+
+	// 디버그 출력
+	/*char buf[128];
+	sprintf_s(buf, "NDC Mouse Pos: (%.3f, %.3f)\n", x, y);
+	OutputDebugStringA(buf);*/
+	if (x < minX) return false;
+	if (x > maxX) return false;
+	if (y < minY) return false;
+	if (y > maxY) return false;
+	//OutputDebugString(L"click\n");
+	return true;
+}
+
+char UIObject::GetType()
+{
+	return type;
+}
+
+void UIObject::setBox()
+{
+	if (m_pChild) {
+		int num = m_pChild->m_ppMeshes[0]->GetVerNum();
+		XMFLOAT3* v = m_pChild->m_ppMeshes[0]->GetVertices();
+
+		for (int i = 0; i<num; ++i)
+		{
+			if (v[i].y < minX) minX = v[i].y;
+			if (v[i].y > maxX) maxX = v[i].y;
+
+			if (v[i].x < minY) minY = v[i].x;
+			if (v[i].x > maxY) maxY = v[i].x;
+		}
+
+		
+		minX += m_pChild->GetPosition().x;
+		maxX += m_pChild->GetPosition().x;
+		minY += m_pChild->GetPosition().y;
+		maxY += m_pChild->GetPosition().y;
+		
+		char buffer[256];
+		sprintf_s(buffer,
+			"BoundingBox -> MinX: %.3f, MaxX: %.3f, MinY: %.3f, MaxY: %.3f\n",
+			minX, maxX, minY, maxY);
+
+		OutputDebugStringA(buffer);
+	}
+
+}
