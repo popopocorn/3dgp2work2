@@ -177,11 +177,14 @@ public:
 	CGameObject 					*m_pParent = NULL;
 	CGameObject 					*m_pChild = NULL;
 	CGameObject 					*m_pSibling = NULL;
-	BoundingOrientedBox				m_xmOOBB;
+	BoundingOrientedBox				m_xmWorldOOBB;
+	BoundingOrientedBox				m_xmModelOOBB;
 
 	virtual void SetMesh(int nIndex, CMesh* pMesh);
 	void SetShader(int nMaterial, CShader *pShader);
 	void SetMaterial(int nMaterial, CMaterial *pMaterial);
+	void setOOBB();
+	void updateOOBB();
 
 	void SetChild(CGameObject *pChild);
 

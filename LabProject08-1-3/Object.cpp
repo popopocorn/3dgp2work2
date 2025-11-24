@@ -392,6 +392,57 @@ void CGameObject::SetMaterial(int nMaterial, CMaterial *pMaterial)
 	if (m_ppMaterials[nMaterial]) m_ppMaterials[nMaterial]->AddRef();
 }
 
+void CGameObject::setOOBB()
+{
+	XMFLOAT3* vertices = m_ppMeshes[0]->GetVertices();
+	int vertexCount = m_ppMeshes[0]->GetVerNum();
+
+	// 정점이 없으면 종료
+	if (vertexCount <= 0) return;
+
+	// X 비교 함수
+	auto compX = [](const XMFLOAT3& a, const XMFLOAT3& b) {
+		return a.x < b.x;
+		};
+	// Y 비교 함수
+	auto compY = [](const XMFLOAT3& a, const XMFLOAT3& b) {
+		return a.y < b.y;
+		};
+	// Z 비교 함수
+	auto compZ = [](const XMFLOAT3& a, const XMFLOAT3& b) {
+		return a.z < b.z;
+		};
+
+	// minmax_element는 pair(iteratorMin, iteratorMax)를 반환
+	auto [minX, maxX] = std::minmax_element(vertices, vertices + vertexCount, compX);
+	auto [minY, maxY] = std::minmax_element(vertices, vertices + vertexCount, compY);
+	auto [minZ, maxZ] = std::minmax_element(vertices, vertices + vertexCount, compZ);
+
+	// center 계산
+	XMFLOAT3 center(
+		(minX->x + maxX->x) * 0.5f,
+		(minY->y + maxY->y) * 0.5f,
+		(minZ->z + maxZ->z) * 0.5f
+	);
+
+	// extents 계산
+	XMFLOAT3 extents(
+		(maxX->x - minX->x) * 0.5f,
+		(maxY->y - minY->y) * 0.5f,
+		(maxZ->z - minZ->z) * 0.5f
+	);
+
+	// 모델 공간 OOBB
+	m_xmModelOOBB = BoundingOrientedBox(center, extents, XMFLOAT4(0, 0, 0, 1));
+	m_xmWorldOOBB = BoundingOrientedBox(center, extents, XMFLOAT4(0, 0, 0, 1));
+}
+
+void CGameObject::updateOOBB()
+{
+	XMMATRIX world = XMLoadFloat4x4(&m_xmf4x4World);
+	m_xmModelOOBB.Transform(m_xmWorldOOBB, world);
+}
+
 void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 {
 	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
@@ -768,6 +819,7 @@ CGameObject *CGameObject::LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, I
 			CStandardMesh *pMesh = new CStandardMesh(pd3dDevice, pd3dCommandList);
 			pMesh->LoadMeshFromFile(pd3dDevice, pd3dCommandList, pInFile);
 			pGameObject->SetMesh(0, pMesh);
+			pGameObject->setOOBB();
 		}
 		else if (!strcmp(pstrToken, "<Materials>:"))
 		{
@@ -796,6 +848,7 @@ CGameObject *CGameObject::LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, I
 			break;
 		}
 	}
+	
 	return(pGameObject);
 }
 
