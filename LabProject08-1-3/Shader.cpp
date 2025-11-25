@@ -350,7 +350,7 @@ void CStandardShader::CreateShader(ID3D12Device *pd3dDevice, ID3D12GraphicsComma
 //
 CObjectsShader::CObjectsShader()
 {
-	m_nObjects = 120;
+	//m_nObjects = 120;
 }
 
 CObjectsShader::~CObjectsShader()
@@ -384,28 +384,31 @@ XMFLOAT3 RandomPositionInSphere(XMFLOAT3 xmf3Center, float fRadius, int nColumn,
 
 void CObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext)
 {
-	m_ppObjects = new CGameObject * [m_nObjects];
-
+	m_pd3dDevice = pd3dDevice;
+	m_pd3dCommandList = pd3dCommandList;
+	m_pd3dGraphicsRootSignature = pd3dGraphicsRootSignature;
 	CGameObject *pSuperCobraModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/SuperCobra.bin", this);
 	CGameObject* pGunshipModel = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/Gunship.bin", this);
 
 	int nColumnSpace = 5, nColumnSize = 30;           
-    int nFirstPassColumnSize = (m_nObjects % nColumnSize) > 0 ? (nColumnSize - 1) : nColumnSize;
-
+    //int nFirstPassColumnSize = (m_nObjects % nColumnSize) > 0 ? (nColumnSize - 1) : nColumnSize;
+    int nFirstPassColumnSize = (120 % nColumnSize) > 0 ? (nColumnSize - 1) : nColumnSize;
+	
 	int nObjects = 0;
     for (int h = 0; h < nFirstPassColumnSize; h++)
     {
-        for (int i = 0; i < floor(float(m_nObjects) / float(nColumnSize)); i++)
+        //for (int i = 0; i < floor(float(m_nObjects) / float(nColumnSize)); i++)
+        for (int i = 0; i < floor(float(120) / float(nColumnSize)); i++)
         {
 			if (nObjects % 2)
 			{
-				m_ppObjects[nObjects] = new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+				m_ppObjects.push_back(new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature));
 				m_ppObjects[nObjects]->SetChild(pSuperCobraModel);
 				pSuperCobraModel->AddRef();
 			}
 			else
 			{
-				m_ppObjects[nObjects] = new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+				m_ppObjects.push_back(new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature));
 				m_ppObjects[nObjects]->SetChild(pGunshipModel);
 				pGunshipModel->AddRef();
 			}
@@ -418,17 +421,18 @@ void CObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsComman
 
     if (nFirstPassColumnSize != nColumnSize)
     {
-        for (int i = 0; i < m_nObjects - int(floor(float(m_nObjects) / float(nColumnSize)) * nFirstPassColumnSize); i++)
+        //for (int i = 0; i < m_nObjects - int(floor(float(m_nObjects) / float(nColumnSize)) * nFirstPassColumnSize); i++)
+        for (int i = 0; i < 120 - int(floor(float(120) / float(nColumnSize)) * nFirstPassColumnSize); i++)
         {
 			if (nObjects % 2)
 			{
-				m_ppObjects[nObjects] = new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+				m_ppObjects.push_back(new CSuperCobraObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature));
 				m_ppObjects[nObjects]->SetChild(pSuperCobraModel);
 				pSuperCobraModel->AddRef();
 			}
 			else
 			{
-				m_ppObjects[nObjects] = new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature);
+				m_ppObjects.push_back(new CGunshipObject(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature));
 				m_ppObjects[nObjects]->SetChild(pGunshipModel);
 				pGunshipModel->AddRef();
 			}
@@ -439,15 +443,16 @@ void CObjectsShader::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsComman
         }
     }
 
+
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CObjectsShader::ReleaseObjects()
 {
-	if (m_ppObjects)
+	if (! m_ppObjects.empty())
 	{
-		for (int j = 0; j < m_nObjects; j++) if (m_ppObjects[j]) m_ppObjects[j]->Release();
-		delete[] m_ppObjects;
+		for (int j = 0; j < m_ppObjects.size(); j++) if (m_ppObjects[j]) m_ppObjects[j]->Release();
+		m_ppObjects.clear();
 	}
 }
 
@@ -457,22 +462,47 @@ void CObjectsShader::AnimateObjects(float fTimeElapsed)
 
 void CObjectsShader::ReleaseUploadBuffers()
 {
-	for (int j = 0; j < m_nObjects; j++) if (m_ppObjects[j]) m_ppObjects[j]->ReleaseUploadBuffers();
+	//for (int j = 0; j < m_nObjects; j++) if (m_ppObjects[j]) m_ppObjects[j]->ReleaseUploadBuffers();
+	for (int j = 0; j < m_ppObjects.size(); j++) if (m_ppObjects[j]) m_ppObjects[j]->ReleaseUploadBuffers();
 }
 
 void CObjectsShader::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState)
 {
 	CShader::Render(pd3dCommandList, pCamera, nPipelineState);
 
-	for (int j = 0; j < m_nObjects; j++)
+	//for (int j = 0; j < m_nObjects; j++)
+	for (int j = 0; j < m_ppObjects.size(); j++)
 	{
 		if (m_ppObjects[j])
 		{
 			m_ppObjects[j]->Animate(0.16f);
 			m_ppObjects[j]->UpdateTransform(NULL);
-			m_ppObjects[j]->Render(pd3dCommandList, pCamera);
+			if(isInFrustum(m_ppObjects[j], pCamera->GetFrustum())) {
+				m_ppObjects[j]->Render(pd3dCommandList, pCamera);
+			}
 		}
 	}
+	for (int j = 0; j < bullets.size(); j++)
+	{
+		if (bullets[j])
+		{
+			bullets[j]->Animate(0.16f);
+			bullets[j]->UpdateTransform(NULL);
+			bullets[j]->Render(pd3dCommandList, pCamera);
+
+		}
+	}
+}
+
+void CObjectsShader::fire(CPlayer* player)
+{
+	CGameObject* missile = new Missile();
+	CGameObject* mis = CGameObject::LoadGeometryFromFile(m_pd3dDevice, m_pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/MLRS_Rocket.bin", this);
+	missile->SetChild(mis);
+
+	((Missile*)missile)->setPos(player);
+	missile->SetPosition(player->GetShoot());
+	bullets.push_back(missile);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -589,4 +619,12 @@ D3D12_SHADER_BYTECODE UIShader::CreateVertexShader()
 D3D12_SHADER_BYTECODE UIShader::CreatePixelShader()
 {
 	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSUI", "ps_5_1", &m_pd3dPixelShaderBlob));
+}
+
+bool isInFrustum(CGameObject* obj, const BoundingFrustum& frs)
+{
+	if (obj->m_pSibling && isInFrustum(obj->m_pSibling, frs)) return true;
+	if (obj->m_pChild && isInFrustum(obj->m_pChild, frs))return true;
+	if (frs.Intersects(obj->m_xmWorldOOBB)) return true;
+	return false;
 }

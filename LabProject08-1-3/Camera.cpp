@@ -76,6 +76,8 @@ void CCamera::GenerateProjectionMatrix(float fNearPlaneDistance, float fFarPlane
 	m_xmf4x4Projection = Matrix4x4::PerspectiveFovLH(XMConvertToRadians(fFOVAngle), fAspectRatio, fNearPlaneDistance, fFarPlaneDistance);
 //	XMMATRIX xmmtxProjection = XMMatrixPerspectiveFovLH(XMConvertToRadians(fFOVAngle), fAspectRatio, fNearPlaneDistance, fFarPlaneDistance);
 //	XMStoreFloat4x4(&m_xmf4x4Projection, xmmtxProjection);
+	BoundingFrustum::CreateFromMatrix(cameraFrustumLocal, XMLoadFloat4x4(&m_xmf4x4Projection));
+
 }
 
 void CCamera::GenerateViewMatrix(XMFLOAT3 xmf3Position, XMFLOAT3 xmf3LookAt, XMFLOAT3 xmf3Up)
@@ -104,6 +106,10 @@ void CCamera::RegenerateViewMatrix()
 	m_xmf4x4View._41 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Right);
 	m_xmf4x4View._42 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Up);
 	m_xmf4x4View._43 = -Vector3::DotProduct(m_xmf3Position, m_xmf3Look);
+
+	XMMATRIX invView = XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_xmf4x4View));
+
+	cameraFrustumLocal.Transform(cameraFrustum, invView);
 }
 
 void CCamera::CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
@@ -128,6 +134,8 @@ void CCamera::UpdateShaderVariables(ID3D12GraphicsCommandList *pd3dCommandList)
 
 	D3D12_GPU_VIRTUAL_ADDRESS d3dGpuVirtualAddress = m_pd3dcbCamera->GetGPUVirtualAddress();
 	pd3dCommandList->SetGraphicsRootConstantBufferView(0, d3dGpuVirtualAddress);
+
+
 }
 
 void CCamera::ReleaseShaderVariables()

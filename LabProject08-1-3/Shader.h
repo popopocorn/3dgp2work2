@@ -6,6 +6,7 @@
 
 #include "Object.h"
 #include "Camera.h"
+#include "Player.h"
 
 class CShader
 {
@@ -107,9 +108,14 @@ public:
 
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, int nPipelineState=0);
 
-	int GetNumberOfObjects() { return(m_nObjects); }
-	CGameObject**					m_ppObjects = 0;
-	int								m_nObjects = 0;
+	int GetNumberOfObjects() { return(m_ppObjects.size()); }
+	ID3D12Device*								m_pd3dDevice;
+	ID3D12GraphicsCommandList*					m_pd3dCommandList;
+	ID3D12RootSignature*						m_pd3dGraphicsRootSignature;
+	std::vector<CGameObject*>					m_ppObjects;
+	std::vector<CGameObject*>					bullets;
+	void										fire(CPlayer*);
+	//int								m_nObjects = 0;
 protected:
 
 
@@ -156,9 +162,11 @@ class UIShader : public CObjectsShader {
 public:
 	UIShader() {};
 	~UIShader() {};
-	int GetNumberOfObjects() { return(m_nObjects); }
+	//int GetNumberOfObjects() { return(m_nObjects); }
 	virtual void BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext = NULL);
 	virtual D3D12_SHADER_BYTECODE CreateVertexShader();
 	virtual D3D12_SHADER_BYTECODE CreatePixelShader();
 	void ReleaseUploadBuffers() {};
 };
+
+bool isInFrustum(CGameObject* obj, const BoundingFrustum& frs);

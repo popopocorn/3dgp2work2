@@ -1121,3 +1121,38 @@ void UIObject::setBox()
 	}
 
 }
+
+
+Missile::Missile()
+{
+}
+
+void Missile::setPos(CPlayer* player)
+{
+	m_xmf4x4Transform = player->m_xmf4x4Transform;
+	m_xmf4x4World = player->m_xmf4x4Transform;
+
+	const int BUFFER_SIZE = 256;
+	wchar_t buffer[BUFFER_SIZE];
+	XMFLOAT3 position = GetPosition();
+	// 3. X, Y, Z 값들을 포맷하여 버퍼에 저장합니다.
+	swprintf_s(buffer, BUFFER_SIZE,
+		L"--- %s Position (X, Y, Z) ---\n"
+		L"X: %10.4f, Y: %10.4f, Z: %10.4f\n",
+		"Pos",
+		position.x, // XMFLOAT3의 X
+		position.y, // XMFLOAT3의 Y
+		position.z  // XMFLOAT3의 Z
+	);
+
+	// 4. 포맷된 문자열을 디버그 스트림으로 출력합니다.
+	OutputDebugStringW(buffer);
+
+
+}
+
+void Missile::Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent)
+{
+	
+	MoveForward(fTimeElapsed * 5.0f);
+}

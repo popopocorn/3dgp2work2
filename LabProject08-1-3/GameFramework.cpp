@@ -5,6 +5,8 @@
 #include "stdafx.h"
 #include "GameFramework.h"
 
+CScene* startScene;
+
 CGameFramework::CGameFramework()
 {
 	m_pdxgiFactory = NULL;
@@ -33,6 +35,7 @@ CGameFramework::CGameFramework()
 	m_pPlayer = NULL;
 
 	_tcscpy_s(m_pszFrameRate, _T("LabProject ("));
+	startScene = new MenuScene(this);
 }
 
 CGameFramework::~CGameFramework()
@@ -402,8 +405,7 @@ void CGameFramework::BuildObjects()
 
 	m_pd3dCommandList->Reset(m_pd3dCommandAllocator, NULL);
 
-	//m_pScene.push_back(new CScene(this));
-	m_pScene.push_back(new MenuScene(this));
+	m_pScene.push_back(startScene);
 	if (m_pScene.back()) m_pScene.back()->BuildObjects(m_pd3dDevice, m_pd3dCommandList);
 
 	

@@ -193,7 +193,7 @@ public:
 	virtual void PrepareAnimate() { }
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent=NULL);
 
-	virtual void OnPrepareRender() { }
+	virtual void OnPrepareRender() { updateOOBB(); }
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera=NULL);
 
 	virtual void CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
@@ -339,4 +339,12 @@ private:
 	float maxX;
 	float minY;
 	float maxY;
+};
+
+class Missile : public CGameObject {
+public:
+	Missile();
+	~Missile() {};
+	void setPos(CPlayer* player);
+	virtual void Animate(float fTimeElapsed, XMFLOAT4X4* pxmf4x4Parent = NULL);
 };

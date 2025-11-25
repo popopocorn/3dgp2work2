@@ -187,6 +187,8 @@ void CScene::BuildDefaultLightsAndMaterials()
 
 void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
 {
+	m_pd3dDevice = pd3dDevice;
+	m_pd3dCommandList = pd3dCommandList;
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
 	CObjectsShader* pObjectsShader = new CObjectsShader();
@@ -208,11 +210,11 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 	CAirplanePlayer* pAirplanePlayer = new CAirplanePlayer(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	pAirplanePlayer->SetPosition(XMFLOAT3(920.0f, 745.0f, 1270.0));
+	pAirplanePlayer->Rotate(0, 180, 0);
 	m_pPlayer = pAirplanePlayer;
 
 	pObjectsShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 	pObjectsShader->BuildObjects(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, NULL);
-
 	m_ppShaders[0] = pObjectsShader;
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -241,10 +243,10 @@ void CScene::ReleaseObjects()
 	if (m_pTerrain) delete m_pTerrain;
 	if (m_pSkyBox) delete m_pSkyBox;
 
-	if (m_ppGameObjects)
+	if (!m_ppGameObjects.empty())
 	{
-		for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Release();
-		delete[] m_ppGameObjects;
+		for (int i = 0; i < m_ppGameObjects.size(); i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Release();
+		m_ppGameObjects.clear();
 	}
 
 	if (m_pLights) delete[] m_pLights;
@@ -453,7 +455,7 @@ void CScene::ReleaseUploadBuffers()
 	if (m_pSkyBox) m_pSkyBox->ReleaseUploadBuffers();
 
 	for (int i = 0; i < m_nShaders; i++) m_ppShaders[i]->ReleaseUploadBuffers();
-	for (int i = 0; i < m_nGameObjects; i++) m_ppGameObjects[i]->ReleaseUploadBuffers();
+	for (int i = 0; i < m_ppGameObjects.size(); i++) m_ppGameObjects[i]->ReleaseUploadBuffers();
 }
 
 bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
@@ -474,6 +476,9 @@ bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 				SetCursor(NULL);
 				GetCursorPos(&m_ptOldCursorPos);
 			}
+			break;
+		case VK_CONTROL:
+			((CObjectsShader*)m_ppShaders[0])->fire(m_pPlayer);
 			break;
 		default:
 			break;
@@ -511,8 +516,8 @@ bool CScene::ProcessInput(UCHAR *pKeysBuffer)
 	if (pKeysBuffer['S'] & 0xF0) dwDirection |= DIR_BACKWARD;
 	if (pKeysBuffer['A'] & 0xF0) dwDirection |= DIR_LEFT;
 	if (pKeysBuffer['D'] & 0xF0) dwDirection |= DIR_RIGHT;
-	if (pKeysBuffer[VK_LSHIFT] & 0xF0) dwDirection |= DIR_UP;
-	if (pKeysBuffer[VK_LCONTROL] & 0xF0) dwDirection |= DIR_DOWN;
+	if (pKeysBuffer[VK_SPACE] & 0xF0) dwDirection |= DIR_UP;
+	if (pKeysBuffer[VK_SHIFT] & 0xF0) dwDirection |= DIR_DOWN;
 	if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
 	{
 		if (cxDelta || cyDelta)
@@ -533,8 +538,8 @@ bool CScene::ProcessInput(UCHAR *pKeysBuffer)
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
-	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Animate(fTimeElapsed, NULL);
-	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->UpdateTransform(NULL);
+	for (int i = 0; i < m_ppGameObjects.size(); i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Animate(fTimeElapsed, NULL);
+	for (int i = 0; i < m_ppGameObjects.size(); i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->UpdateTransform(NULL);
 
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->AnimateObjects(fTimeElapsed);
 	
@@ -561,7 +566,7 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	if (m_pSkyBox) m_pSkyBox->Render(pd3dCommandList, pCamera);
 	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
 
-	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_ppGameObjects.size(); i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
 }
 
@@ -575,7 +580,7 @@ bool MenuScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wPar
 		::SetCapture(hWnd);
 		::GetCursorPos(&curPos);
 		ScreenToClient(hWnd, &curPos);
-		for (int i = 0; i < ((UIShader*)m_ppShaders[0])->m_nObjects; ++i) {
+		for (int i = 0; i < ((UIShader*)m_ppShaders[0])->GetNumberOfObjects(); ++i) {
 			if (((UIObject*)((UIShader*)m_ppShaders[0])->m_ppObjects[i])->checkClick(curPos)){
 				char t = ((UIObject*)((UIShader*)m_ppShaders[0])->m_ppObjects[i])->GetType();
 				switch (t) {
@@ -656,14 +661,12 @@ void MenuScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 
 
 	pObjectsShader->CreateShader(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
-	pObjectsShader->m_nObjects = 2;
-	pObjectsShader->m_ppObjects = new CGameObject * [pObjectsShader->m_nObjects];
 
 	CGameObject* start_button = CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, "Model/start_button.bin", pObjectsShader);
 	start_button->SetPosition(0, 0.5, 0.);
 	//Gunship start_button
 
-	pObjectsShader->m_ppObjects[0] = new UIObject(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pObjectsShader->m_ppObjects.push_back(new UIObject(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature));
 	pObjectsShader->m_ppObjects[0]->SetChild(start_button);
 	((UIObject*)pObjectsShader->m_ppObjects[0])->setBox();
 	((UIObject*)pObjectsShader->m_ppObjects[0])->setType('s');
@@ -673,7 +676,7 @@ void MenuScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList
 	quit_button->SetPosition(0, -0.5, 0.);
 	//Gunship start_button
 
-	pObjectsShader->m_ppObjects[1] = new UIObject(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+	pObjectsShader->m_ppObjects.push_back(new UIObject(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature));
 	pObjectsShader->m_ppObjects[1]->SetChild(quit_button);
 	((UIObject*)pObjectsShader->m_ppObjects[1])->setBox();
 	((UIObject*)pObjectsShader->m_ppObjects[1])->setType('q');
@@ -705,7 +708,7 @@ void MenuScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCam
 	if (m_pSkyBox) m_pSkyBox->Render(pd3dCommandList, pCamera);
 	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
 
-	for (int i = 0; i < m_nGameObjects; i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
+	for (int i = 0; i < m_ppGameObjects.size(); i++) if (m_ppGameObjects[i]) m_ppGameObjects[i]->Render(pd3dCommandList, pCamera);
 	for (int i = 0; i < m_nShaders; i++) if (m_ppShaders[i]) m_ppShaders[i]->Render(pd3dCommandList, pCamera);
 
 }

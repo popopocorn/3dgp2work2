@@ -172,6 +172,9 @@ void CPlayer::Update(float fTimeElapsed)
 	float fDeceleration = (m_fFriction * fTimeElapsed);
 	if (fDeceleration > fLength) fDeceleration = fLength;
 	m_xmf3Velocity = Vector3::Add(m_xmf3Velocity, Vector3::ScalarProduct(m_xmf3Velocity, -fDeceleration, true));
+
+	
+
 }
 
 CCamera *CPlayer::OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode)
@@ -254,6 +257,7 @@ CAirplanePlayer::CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommand
 	PrepareAnimate();
 
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
+
 }
 
 CAirplanePlayer::~CAirplanePlayer()
@@ -285,7 +289,19 @@ void CAirplanePlayer::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 void CAirplanePlayer::OnPrepareRender()
 {
 	CPlayer::OnPrepareRender();
+
+	XMMATRIX matTransform = XMLoadFloat4x4(&m_xmf4x4Transform);
+	// gun(XMFLOAT3)을 XMVECTOR 로 변환 (w=1 -> 위치 벡터)
+	XMVECTOR vGun = XMLoadFloat3(&gun);
+	vGun = XMVectorSetW(vGun, 1.0f);
+
+	// 행렬 곱
+	XMVECTOR vResult = XMVector3TransformCoord(vGun, matTransform);
+
+	// 결과를 다시 XMFLOAT3에 저장
+	XMStoreFloat3(&gunWorld, vResult);
 }
+
 
 CCamera *CAirplanePlayer::ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed)
 {

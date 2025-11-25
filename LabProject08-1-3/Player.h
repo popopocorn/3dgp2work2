@@ -34,11 +34,12 @@ protected:
 	CCamera						*m_pCamera = NULL;
 
 	CShader						*m_pShader = NULL;
-
+	XMFLOAT3					gun = XMFLOAT3(0.0f, 0.0f, 5.0f);
+	XMFLOAT3					gunWorld = XMFLOAT3(0.0f, 0.0f, 5.0f);
 public:
 	CPlayer();
 	virtual ~CPlayer();
-
+	XMFLOAT3					GetShoot() { return gunWorld; }
 	XMFLOAT3 GetPosition() { return(m_xmf3Position); }
 	XMFLOAT3 GetLookVector() { return(m_xmf3Look); }
 	XMFLOAT3 GetUpVector() { return(m_xmf3Up); }
@@ -91,14 +92,17 @@ public:
 
 	CGameObject					*m_pMainRotorFrame = NULL;
 	CGameObject					*m_pTailRotorFrame = NULL;
-
+	
+	
 private:
 	virtual void PrepareAnimate();
 	virtual void Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent = NULL);
 
+
 public:
 	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
 	virtual void OnPrepareRender();
+	
 };
 
 

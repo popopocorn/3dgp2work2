@@ -95,9 +95,7 @@ public:
 
 public:
 	ID3D12RootSignature					*m_pd3dGraphicsRootSignature = NULL;
-
-	int									m_nGameObjects = 0;
-	CGameObject							**m_ppGameObjects = NULL;
+	std::vector<CGameObject*>			m_ppGameObjects;
 
 	int									m_nShaders = 0;
 	CShader								**m_ppShaders = NULL;
@@ -115,7 +113,8 @@ public:
 	bool								mouse_c = true;
 	POINT								m_ptOldCursorPos{1000, 1000};
 	CGameFramework*						framework;
-
+	ID3D12Device*						m_pd3dDevice = NULL; 
+	ID3D12GraphicsCommandList*			m_pd3dCommandList = NULL;
 public:
 	static CDescriptorHeap*				m_pDescriptorHeap;
 
